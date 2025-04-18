@@ -1,0 +1,10 @@
+node_modules/
+dist/
+build/
+electron/
+.DS_Store
+*.exe
+*.log
+*.sqlite
+temp/
+tmp/
