@@ -17,35 +17,73 @@
 1. JS 檔案命名風格使用 camelCase。
 2. 函式名稱使用 snake_case。
 3. 使用 vanilla JS，不引入 jQuery 等第三方框架。
-4. 使用 fetch 請求後端 PHP，並處理 JSON 檔案。
 5. config 設定需從 config.json 讀取，允許前端修改。
+6. 所有前端檔案統一放在 `ui/` 資料夾中，保持結構清晰。
+- 所有資料相關操作（新增、查詢、刪除、更新）均須使用 MySQL 資料庫，不再使用 *.json 作為主儲存方式。
+- 所有 SQL 查詢需使用 PDO 並加上 try-catch 錯誤處理。
 
 ## 後端規則（PHP）
 1. 使用 PHP 內建伺服器 `php -S 0.0.0.0:8000 -t kiosk`。
-2. 所有 PHP 檔案放在 `kiosk/` 資料夾中。
-3. 包含 save_order.php、kitchen.php、queue.php、reports.php 等。
-4. 儲存檔案與讀寫 queue.json、menu.json 等需確保資料一致性。
+2. 所有 PHP 檔案放在 `kiosk/'api` 資料夾中。
+3. 包含 auth.php（認證授權）、save_order.php（訂單處理）、kitchen.php（廚房管理）、queue.php（叫號系統）、reports.php（報表生成）、inventory.php（庫存管理）等。
+4. 儲存檔案與讀寫 queue.json、menu.json、inventory.json 等需確保資料一致性。
 5. 所有 PHP 檔案需具備清楚的錯誤處理與輸出格式（JSON 回應）。
+6. 實作權限系統，區分管理員、店員、消費者三種角色。
 
 ## 開發順序建議
-1. 登入系統（login.php + session 管理）
-2. 每日報表頁（後端 reports.php + 前端下載）
-3. 庫存與成本頁（inventory.html + API）
-4. 點餐流程完整化（order.html + save_order.php）
-5. 備餐確認與叫號功能（orders-admin.html → queue.json）
-6. config.json 前端設定頁（config-ui.html）
+1. 登入與權限系統（auth.php + session 管理）
+2. 菜單管理系統（menu.php + 菜單編輯介面）
+3. 庫存與原物料管理（inventory.php + 庫存介面）
+4. 點餐流程實作（order.html + save_order.php + 購物車功能）
+5. 訂單管理與叫號功能（orders-admin.html + call.html）
+6. 銷售報表系統（sales-report.html + reports.php）
+7. 電子發票整合（invoice.php + 發票介面）
 
-pos-kiosk/
+pos-mvp/
   ├─ kiosk/              # 後端 PHP 檔案
-  │   ├─ login.php 
-  │   ├─ reports.php
-  │   ├─ save_order.php
-  │   ├─ ...
+  │   ├─ api/           # 後端 API 程式碼目錄
+  │   │   ├─ auth.php        # 認證授權管理
+  │   │   ├─ menu.php        # 菜單管理
+  │   │   ├─ inventory.php   # 庫存與原物料管理
+  │   │   ├─ save_order.php  # 訂單處理
+  │   │   ├─ kitchen.php     # 廚房管理
+  │   │   ├─ queue.php       # 叫號系統管理
+  │   │   ├─ reports.php     # 報表生成
+  │   │   ├─ invoice.php     # 電子發票處理
+  │   │   ├─ data/           # 資料儲存目錄
+  │   │   │   ├─ config.json # 系統設定
+  │   │   │   ├─ menu.json   # 菜單資料
+  │   │   │   ├─ users.json  # 使用者資料
+  │   │   │   ├─ orders.json # 訂單歷史
+  │   │   │   ├─ queue.json  # 叫號佇列
+  │   │   │   └─ inventory.json # 庫存資料
+  │   │   └─ logs/           # 系統日誌
+  │   ├─ ui/                 # 前端檔案
+  │   │   ├─ login.html      # 登入介面
+  │   │   ├─ admin.html      # 管理介面
+  │   │   ├─ order.html      # 點餐介面
+  │   │   ├─ menu-edit.html  # 菜單編輯
+  │   │   ├─ inventory.html  # 庫存管理
+  │   │   ├─ call.html       # 叫號系統
+  │   │   ├─ sales-report.html # 銷售報表
+  │   │   ├─ config-ui.html  # 系統設定
+  │   │   ├─ css/            # 樣式表
+  │   │   ├─ js/             # JavaScript 檔案
+  │   │   │   ├─ login.js    # 登入邏輯
+  │   │   │   ├─ admin.js    # 管理邏輯
+  │   │   │   ├─ order.js     # 點餐邏輯
+  │   │   │   ├─ menu.js     # 菜單邏輯
+  │   │   │   ├─ inventory.js # 庫存邏輯
+  │   │   │   ├─ call.js     # 叫號邏輯
+  │   │   │   └─ report.js   # 報表邏輯
+  │   │   └─ img/            # 圖片資源
+  ├─ docs/               # 專案文件目錄
+  │   ├─ PROJECT_STATUS.md # 專案進度報告
+  │   └─ mac伺服器啟動.md  # 伺服器啟動說明
   ├─ node_modules/       # Node.js 依賴項
   ├─ .git/               # Git 版本控制檔案
   ├─ .vscode/            # VS Code 設定檔案
   ├─ .cursor/            # Cursor 設定檔案
-  ├─ config-ui.html      # 前端設定頁面
   ├─ config.json         # 全域設定檔案
   ├─ .cursorrules        # Cursor 規則檔案
   ├─ .DS_Store           # macOS 系統檔案
@@ -53,14 +91,102 @@ pos-kiosk/
   ├─ .eslintrc.json      # ESLint 設定檔案
   ├─ .gitignore          # Git 忽略規則檔案
   ├─ .prettierrc         # Prettier 設定檔案
-  ├─ mac伺服器啟動.md    # 伺服器啟動說明
   ├─ main.js             # Electron 主程序
   ├─ package.json        # 專案設定和依賴項
   ├─ package-lock.json   # 依賴項鎖定檔案
   ├─ preload.js          # Electron 預載腳本
-  ├─ PROJECT_STATUS.md   # 專案進度報告
   ├─ tsconfig.json       # TypeScript 設定檔案
   └─ vite.config.ts      # Vite 設定檔案
 
-mkdir -p docs && mv PROJECT_STATUS.md docs/
+{
+  "ignored": [
+    "node_modules",
+    "dist",
+    "build",
+    "kiosk/temp",
+    "kiosk/logs",
+    "*.sqlite",
+    "*.exe",
+    ".DS_Store",
+    ".git"
+  ],
+  "rules": {
+    "kiosk/api": {
+      "description": "後端 API 檔案目錄",
+      "files": {
+        "*.php": {
+          "description": "PHP API 端點檔案",
+          "conventions": [
+            "使用 RESTful API 設計原則",
+            "回應格式統一使用 JSON",
+            "錯誤處理需包含適當的 HTTP 狀態碼",
+            "所有 API 需實作 CORS 支援",
+            "所有程式需加上中英對照註解"
+          ]
+        }
+      }
+    },
+    "mysql/database": {
+  "description": "MySQL 資料庫",
+  "tables": {
+    "users": {
+      "description": "使用者資料表",
+      "conventions": [
+        "使用 INT 作為主鍵 ID",
+        "欄位名稱使用 snake_case 命名",
+        "確保 UNIQUE 與 NOT NULL 約束"
+      ]
+    },
+    "orders": {
+      "description": "訂單資料表",
+      "conventions": [
+        "使用 DATETIME 儲存下單時間",
+        "可追蹤 order_status 狀態欄位",
+        "可關聯 menu_items, queue, reports 等資料表"
+      ]
+    }
+    "kiosk/ui": {
+      "description": "前端檔案目錄",
+      "files": {
+        "*.html": {
+          "description": "HTML 頁面檔案",
+          "conventions": [
+            "使用語意化標籤",
+            "保持結構清晰",
+            "所有程式需加上中英對照註解"
+          ]
+        },
+        "js/*.js": {
+          "description": "JavaScript 檔案",
+          "conventions": [
+            "使用 camelCase 命名",
+            "函式使用 snake_case",
+            "避免使用全域變數",
+            "使用 vanilla JS",
+            "所有程式需加上中英對照註解"
+          ]
+        },
+        "css/*.css": {
+          "description": "CSS 樣式表",
+          "conventions": [
+            "使用 BEM 命名規範",
+            "保持樣式模組化",
+            "所有樣式需加上註解"
+          ]
+        }
+      }
+    }
+  }
+}
 
+"global_table_conventions": {
+  "description": "所有資料表共通設計原則",
+  "conventions": [
+    "每個表格皆需有 created_at 與 updated_at 欄位",
+    "時間欄位統一使用 DATETIME 格式",
+    "必要欄位需加上 NOT NULL 限制",
+    "欄位名稱一律使用 snake_case 格式",
+    "避免使用 reserved SQL keywords 作為欄位名",
+    "所有主鍵欄位命名為 id，外鍵欄位命名為 xxx_id（如 user_id, order_id）"
+  ]
+}

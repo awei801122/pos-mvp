@@ -503,14 +503,35 @@
         // 載入菜單數據
         async function loadMenu() {
             try {
-                const response = await fetch('../api/menu.php');
+                const response = await fetch('/api/menu.php');
                 if (!response.ok) {
                     throw new Error('載入菜單失敗');
                 }
-                menuData = await response.json();
+                const data = await response.json();
+                if (!data.success) {
+                    throw new Error(data.message || '載入菜單失敗');
+                }
                 
-                renderCategories();
-                renderMenuItems();
+                menuData = data.items;
+                
+                // 渲染分類
+                const categories = data.categories;
+                const categoryList = document.getElementById('categoryList');
+                categoryList.innerHTML = categories.map(category => `
+                    <div class="category-item" onclick="filterByCategory('${category.name}')">
+                        ${category.name}
+                    </div>
+                `).join('');
+                
+                // 默認選中第一個分類
+                if (categories.length > 0) {
+                    categoryList.firstElementChild.classList.add('active');
+                    // 顯示第一個分類的商品
+                    filterByCategory(categories[0].name);
+                } else {
+                    // 如果沒有分類，顯示所有商品
+                    renderMenuItems();
+                }
             } catch (error) {
                 console.error('載入菜單失敗:', error);
                 document.getElementById('menuGrid').innerHTML = `
@@ -521,38 +542,27 @@
             }
         }
 
-        // 渲染分類
-        function renderCategories() {
-            const categories = [...new Set(menuData.map(item => item.category || '其他'))];
-            const categoryList = document.getElementById('categoryList');
-            categoryList.innerHTML = categories.map(category => `
-                <div class="category-item" onclick="filterByCategory('${category}')">
-                    ${category}
-                </div>
-            `).join('');
-            // 默認選中第一個分類
-            if (categories.length > 0) {
-                categoryList.firstElementChild.classList.add('active');
-            }
-        }
-
         // 渲染菜單項目
         function renderMenuItems(category = null) {
-            document.getElementById('menuGrid').innerHTML = '';
             const menuGrid = document.getElementById('menuGrid');
             const items = category ? 
-                menuData.filter(item => (item.category || '其他') === category) : 
+                menuData.filter(item => item.category === category) : 
                 menuData;
             
             menuGrid.innerHTML = items.map(item => `
                 <div class="menu-item">
-                    <img src="${item.image}" alt="${item.name_zh}" onerror="this.src='/assets/images/default-food.jpg'">
+                    <img src="${item.image_url || '/assets/images/default-food.jpg'}" 
+                         alt="${item.name}" 
+                         class="img-fluid rounded shadow"
+                         onerror="this.src='/assets/images/default-food.jpg'">
                     <div class="p-3">
-                        <h5>${item.name_zh}</h5>
-                        <p class="mb-2">${item.name_en}</p>
+                        <h5>${item.name}</h5>
+                        <p class="text-muted mb-2">${item.description || ''}</p>
                         <div class="d-flex justify-content-between align-items-center">
                             <span class="h6 mb-0">NT$ ${item.price}</span>
-                            <button class="btn btn-primary btn-sm" onclick="showItemDetail(this.getAttribute('data-item'))" data-item='${JSON.stringify(item)}'>
+                            <button class="btn btn-primary btn-sm" 
+                                    onclick="showItemDetail(this.getAttribute('data-item'))" 
+                                    data-item='${JSON.stringify(item)}'>
                                 選擇
                             </button>
                         </div>
@@ -588,11 +598,14 @@
             detailContent.innerHTML = `
                 <div class="row">
                     <div class="col-md-6 mb-4">
-                        <img src="${item.image}" alt="${item.name_zh}" class="img-fluid rounded shadow">
+                        <img src="${item.image_url || '/assets/images/default-food.jpg'}" 
+                             alt="${item.name}" 
+                             class="img-fluid rounded shadow"
+                             onerror="this.src='/assets/images/default-food.jpg'">
                     </div>
                     <div class="col-md-6">
-                        <h2 class="mb-2">${item.name_zh}</h2>
-                        <p class="text-muted mb-4">${item.name_en}</p>
+                        <h2 class="mb-2">${item.name}</h2>
+                        <p class="text-muted mb-4">${item.description || ''}</p>
                         <h4 class="mb-4">NT$ ${item.price}</h4>
                         <div class="mb-4">
                             <label class="form-label">數量</label>
@@ -654,24 +667,29 @@
             const note = document.getElementById('itemNote').value.trim();
             
             cart.addItem({
-                ...item,
+                id: item.id,
+                name: item.name || item.name_zh,  // 使用 name 或 name_zh
+                price: parseFloat(item.price),
                 quantity: quantity,
-                note: note
+                note: note,
+                totalPrice: parseFloat(item.price) * quantity,
+                image: item.image_url || '/assets/images/default-food.jpg'
             });
             
             hideItemDetail();
-            showCartUpdateToast(item.name_zh, quantity);
+            showCartUpdateToast(item.name || item.name_zh, quantity);
         }
 
         // 顯示購物車更新提示
         function showCartUpdateToast(itemName, quantity) {
             const toastContainer = document.createElement('div');
-            toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+            toastContainer.className = 'toast-container position-fixed start-50 top-50 translate-middle';
             toastContainer.style.zIndex = '1500';
             
             toastContainer.innerHTML = `
                 <div class="toast show bg-success text-white" role="alert">
-                    <div class="toast-body">
+                    <div class="toast-body text-center">
+                        <i class="bi bi-cart-check-fill me-2"></i>
                         已加入 ${quantity} 份 ${itemName} 到購物車
                     </div>
                 </div>
@@ -679,10 +697,10 @@
             
             document.body.appendChild(toastContainer);
             
-            // 3秒後自動移除提示
+            // 1.5秒後自動移除提示
             setTimeout(() => {
                 toastContainer.remove();
-            }, 3000);
+            }, 1500);
         }
 
         // 根據分類篩選
@@ -841,34 +859,29 @@
                 // 生成訂單編號 (年月日時分秒毫秒)
                 const orderNumber = new Date().toISOString().replace(/[-:T.Z]/g, '');
 
-                // 建立訂單物件
-                const orderData = {
-                    id: orderNumber,
-                    orderNumber: orderNumber,
-                    orderTime: new Date().toISOString(),
-                    items: cart.items.map(item => ({
-                        id: item.id,
-                        name: item.name,
-                        name_en: item.name_en,
-                        price: item.price,
-                        quantity: item.quantity,
-                        note: item.note,
-                        totalPrice: item.totalPrice
-                    })),
-                    total: cart.getTotal(),
-                    status: 'PENDING',
-                    paymentMethod: paymentMethod,
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString()
-                };
-
                 // 保存訂單
-                fetch('/save-order.php', {
+                fetch('/api/save_order.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(orderData)
+                    body: JSON.stringify({
+                        order_number: orderNumber,
+                        order_time: new Date().toISOString(),
+                        items: cart.items.map(item => ({
+                            menu_id: item.id,
+                            name: item.name,
+                            price: item.price,
+                            quantity: item.quantity,
+                            note: item.note || '',
+                            subtotal: item.totalPrice
+                        })),
+                        total_amount: cart.getTotal(),
+                        status: 'PENDING',
+                        payment_method: paymentMethod,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    })
                 })
                 .then(response => {
                     if (!response.ok) {
@@ -885,17 +898,17 @@
                         
                         // 儲存到 localStorage
                         const orders = JSON.parse(localStorage.getItem('orders') || '[]');
-                        orders.push(orderData);
+                        orders.push(result.order);
                         localStorage.setItem('orders', JSON.stringify(orders));
                         
                         // 觸發訂單更新事件
                         window.dispatchEvent(new CustomEvent('orderUpdated', {
-                            detail: { orderId: orderData.id }
+                            detail: { orderId: result.order.id }
                         }));
 
                         // 根據支付方式處理後續流程
                         if (paymentMethod === 'mobile') {
-                            handleMobilePayment(orderData);
+                            handleMobilePayment(result.order);
                         } else {
                             // 關閉付款 Modal
                             const paymentModal = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
@@ -904,7 +917,7 @@
                             }
                             
                             // 顯示收據選項
-                            showOrderComplete(orderData);
+                            showOrderComplete(result.order);
                         }
                     } else {
                         throw new Error(result.message || '保存訂單失敗');

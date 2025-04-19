@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>結帳付款 - 自助點餐系統</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f8f9fa;
+            padding-bottom: 60px;
+        }
+        .payment-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .payment-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        .order-summary {
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .payment-methods {
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .payment-actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+        }
+        .payment-method-option {
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .payment-method-option:hover {
+            border-color: #2563eb;
+            background-color: #f0f5ff;
+        }
+        .payment-method-option.selected {
+            border-color: #2563eb;
+            background-color: #f0f5ff;
+        }
+        .payment-method-option .form-check-input {
+            margin-right: 10px;
+        }
+        .timer-container {
+            font-size: 1.5rem;
+            color: #6c757d;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .order-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .order-item:last-child {
+            border-bottom: none;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            display: none;
+        }
+        .loading-spinner {
+            width: 4rem;
+            height: 4rem;
+        }
+        .payment-complete {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255,255,255,0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            display: none;
+        }
+        .payment-complete-content {
+            background-color: white;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            max-width: 500px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .payment-success-icon {
+            font-size: 5rem;
+            color: #10b981;
+            margin-bottom: 20px;
+        }
+        .order-number {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #2563eb;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- 導航欄 -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container">
+            <a class="navbar-brand" href="/ui/index.html">自助點餐系統</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/ui/order.html">點餐</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/ui/admin.html">訂單管理</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="payment-container">
+        <div class="payment-header">
+            <h1>結帳付款</h1>
+            <p class="lead">請確認您的訂單並完成付款</p>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="order-summary">
+                    <h4 class="mb-4">訂單明細</h4>
+                    <div id="orderItems" class="mb-4">
+                        <!-- 動態生成訂單項目 -->
+                    </div>
+                    <div class="d-flex justify-content-between border-top pt-3">
+                        <h5>總計</h5>
+                        <h5>NT$ <span id="totalAmount">0</span></h5>
+                    </div>
+                </div>
+
+                <div class="payment-methods">
+                    <h4 class="mb-4">付款方式</h4>
+                    <div class="payment-method-option selected" onclick="selectPaymentMethod('CASH')">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="paymentMethod" id="cashPayment" value="CASH" checked>
+                            <label class="form-check-label w-100" for="cashPayment">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>現金支付</strong>
+                                        <p class="text-muted mb-0">直接在櫃檯付款</p>
+                                    </div>
+                                    <i class="bi bi-cash-coin fs-3"></i>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="payment-method-option" onclick="selectPaymentMethod('CARD')">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="paymentMethod" id="cardPayment" value="CARD">
+                            <label class="form-check-label w-100" for="cardPayment">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>信用卡支付</strong>
+                                        <p class="text-muted mb-0">使用信用卡或金融卡</p>
+                                    </div>
+                                    <i class="bi bi-credit-card fs-3"></i>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="payment-method-option" onclick="selectPaymentMethod('MOBILE')">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="paymentMethod" id="mobilePayment" value="MOBILE">
+                            <label class="form-check-label w-100" for="mobilePayment">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>行動支付</strong>
+                                        <p class="text-muted mb-0">使用 Line Pay, Apple Pay 等行動支付</p>
+                                    </div>
+                                    <i class="bi bi-phone fs-3"></i>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="order-summary">
+                    <h4 class="mb-4">付款摘要</h4>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>商品總計</span>
+                        <span>NT$ <span id="subtotalAmount">0</span></span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-3">
+                        <span>服務費</span>
+                        <span>NT$ 0</span>
+                    </div>
+                    <div class="d-flex justify-content-between border-top pt-3 fw-bold">
+                        <span>應付金額</span>
+                        <span>NT$ <span id="finalAmount">0</span></span>
+                    </div>
+
+                    <div class="timer-container mt-4">
+                        <div>付款倒計時</div>
+                        <div id="paymentTimer">05:00</div>
+                    </div>
+
+                    <div class="payment-actions">
+                        <button class="btn btn-outline-secondary" onclick="backToOrder()">
+                            <i class="bi bi-arrow-left"></i> 返回購物
+                        </button>
+                        <button id="completePaymentBtn" class="btn btn-primary" onclick="simulatePayment()">
+                            <i class="bi bi-check-circle-fill"></i> 模擬付款完成
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 載入中遮罩 -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner-border text-light loading-spinner" role="status">
+            <span class="visually-hidden">處理中...</span>
+        </div>
+    </div>
+
+    <!-- 付款完成畫面 -->
+    <div id="paymentComplete" class="payment-complete">
+        <div class="payment-complete-content">
+            <i class="bi bi-check-circle-fill payment-success-icon"></i>
+            <h2>付款成功</h2>
+            <p class="lead mb-4">您的訂單已確認</p>
+            
+            <h3>取餐號碼</h3>
+            <div class="order-number" id="orderNumber">--</div>
+            
+            <p class="mb-4">請稍候至取餐櫃台領取餐點</p>
+            <p class="text-muted small mb-4">訂單編號：<span id="orderId">--</span></p>
+            
+            <div class="d-flex justify-content-center">
+                <button class="btn btn-outline-secondary me-2" id="printReceiptBtn">
+                    <i class="bi bi-printer"></i> 列印收據
+                </button>
+                <button class="btn btn-primary" onclick="window.location.href='/ui/order.html'">
+                    <i class="bi bi-arrow-return-left"></i> 返回點餐
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <script>
+        let pendingOrder = null;
+        let selectedPaymentMethod = 'CASH';
+        let timerInterval = null;
+        let timerSeconds = 300; // 5分鐘倒計時
+        
+        // 頁面加載時初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPendingOrder();
+            startTimer();
+        });
+        
+        // 載入待處理訂單
+        function loadPendingOrder() {
+            const orderJson = localStorage.getItem('pendingOrder');
+            if (!orderJson) {
+                window.location.href = '/ui/order.html';
+                return;
+            }
+            
+            try {
+                pendingOrder = JSON.parse(orderJson);
+                renderOrderDetails();
+            } catch (error) {
+                console.error('訂單資料解析失敗:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: '訂單資料錯誤',
+                    text: '請返回重新下單',
+                    confirmButtonText: '返回點餐頁面'
+                }).then(() => {
+                    window.location.href = '/ui/order.html';
+                });
+            }
+        }
+        
+        // 渲染訂單詳情
+        function renderOrderDetails() {
+            const orderItemsContainer = document.getElementById('orderItems');
+            const totalAmountElement = document.getElementById('totalAmount');
+            const subtotalAmountElement = document.getElementById('subtotalAmount');
+            const finalAmountElement = document.getElementById('finalAmount');
+            
+            if (!pendingOrder || !pendingOrder.items || !pendingOrder.items.length) {
+                orderItemsContainer.innerHTML = '<p class="text-center">沒有商品</p>';
+                totalAmountElement.textContent = '0';
+                subtotalAmountElement.textContent = '0';
+                finalAmountElement.textContent = '0';
+                return;
+            }
+            
+            // 渲染訂單項目
+            orderItemsContainer.innerHTML = pendingOrder.items.map(item => `
+                <div class="order-item">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="mb-1">${item.name}</h6>
+                            <small class="text-muted">${item.name_en || ''}</small>
+                            ${item.note ? `<p class="small text-muted">備註: ${item.note}</p>` : ''}
+                        </div>
+                        <div class="text-end">
+                            <div>NT$ ${item.price} × ${item.quantity}</div>
+                            <div class="fw-bold">NT$ ${item.totalPrice}</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            // 更新金額
+            totalAmountElement.textContent = pendingOrder.total;
+            subtotalAmountElement.textContent = pendingOrder.total;
+            finalAmountElement.textContent = pendingOrder.total;
+            
+            // 設置選中的付款方式
+            selectPaymentMethod(pendingOrder.payment_method);
+        }
+        
+        // 選擇付款方式
+        function selectPaymentMethod(method) {
+            selectedPaymentMethod = method;
+            
+            // 更新介面
+            document.querySelectorAll('.payment-method-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            // 更新選中的radio按鈕
+            document.querySelectorAll('input[name="paymentMethod"]').forEach(input => {
+                input.checked = (input.value === method);
+                if (input.value === method) {
+                    input.closest('.payment-method-option').classList.add('selected');
+                }
+            });
+            
+            // 更新訂單的付款方式
+            if (pendingOrder) {
+                pendingOrder.payment_method = method;
+                localStorage.setItem('pendingOrder', JSON.stringify(pendingOrder));
+            }
+        }
+        
+        // 付款倒計時
+        function startTimer() {
+            const timerElement = document.getElementById('paymentTimer');
+            
+            timerInterval = setInterval(() => {
+                timerSeconds--;
+                
+                const minutes = Math.floor(timerSeconds / 60);
+                const seconds = timerSeconds % 60;
+                
+                timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                if (timerSeconds <= 0) {
+                    clearInterval(timerInterval);
+                    Swal.fire({
+                        icon: 'warning',
+                        title: '付款時間已到',
+                        text: '請重新下單',
+                        confirmButtonText: '返回點餐頁面'
+                    }).then(() => {
+                        backToOrder();
+                    });
+                }
+            }, 1000);
+        }
+        
+        // 返回訂單頁面
+        function backToOrder() {
+            clearInterval(timerInterval);
+            window.location.href = '/ui/order.html';
+        }
+        
+        // 模擬付款完成
+        function simulatePayment() {
+            if (!pendingOrder) {
+                Swal.fire({
+                    icon: 'error',
+                    title: '訂單資料錯誤',
+                    text: '請返回重新下單'
+                });
+                return;
+            }
+            
+            // 顯示載入中
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            
+            // 確保商品資料格式正確，符合後端預期
+            const formattedItems = pendingOrder.items.map(item => ({
+                id: item.id,
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price,
+                totalPrice: item.totalPrice,
+                note: item.note || ''
+            }));
+            
+            // 構建提交資料
+            const orderData = {
+                items: formattedItems,
+                total: pendingOrder.total,
+                status: 'PENDING',
+                payment_method: selectedPaymentMethod,
+                created_at: pendingOrder.created_at || new Date().toISOString()
+            };
+            
+            // 提交訂單到後端
+            fetch('/api/save_order.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(orderData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`訂單提交失敗 (${response.status})`);
+                }
+                return response.json();
+            })
+            .then(result => {
+                // 隱藏載入中
+                document.getElementById('loadingOverlay').style.display = 'none';
+                
+                if (result.success) {
+                    // 清除計時器
+                    clearInterval(timerInterval);
+                    
+                    // 清除本地訂單資料
+                    localStorage.removeItem('pendingOrder');
+                    
+                    // 清空購物車
+                    localStorage.removeItem('cart');
+                    
+                    // 顯示完成畫面
+                    document.getElementById('orderNumber').textContent = result.order_number;
+                    document.getElementById('orderId').textContent = result.order_id;
+                    document.getElementById('paymentComplete').style.display = 'flex';
+                    
+                    // 設置列印收據按鈕事件
+                    document.getElementById('printReceiptBtn').onclick = function() {
+                        printReceipt(result.order_id);
+                    };
+                } else {
+                    throw new Error(result.message || '訂單提交失敗');
+                }
+            })
+            .catch(error => {
+                console.error('付款處理失敗:', error);
+                
+                // 隱藏載入中
+                document.getElementById('loadingOverlay').style.display = 'none';
+                
+                Swal.fire({
+                    icon: 'error',
+                    title: '付款處理失敗',
+                    text: error.message || '請稍後再試或聯繫服務人員'
+                });
+            });
+        }
+        
+        // 列印收據
+        function printReceipt(orderId) {
+            if (!orderId) {
+                console.error('無效的訂單ID');
+                return;
+            }
+            
+            // 建立收據連結
+            const receiptUrl = `/api/receipt.php?id=${orderId}`;
+            
+            // 開啟新視窗顯示收據
+            const receiptWindow = window.open(receiptUrl, '_blank');
+            
+            // 檢查視窗是否成功開啟
+            if (!receiptWindow || receiptWindow.closed || typeof receiptWindow.closed === 'undefined') {
+                console.error('收據視窗無法開啟，可能被阻擋彈出式視窗');
+                Swal.fire({
+                    icon: 'warning',
+                    title: '無法開啟收據視窗',
+                    text: '請檢查您的瀏覽器設定是否允許彈出式視窗'
+                });
+            }
+        }
+    </script>
+</body>
+</html> 

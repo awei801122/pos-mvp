@@ -584,7 +584,7 @@
         async function loadOrders() {
             try {
                 // 從 PHP 檔案獲取訂單資料
-                const response = await fetch('/get-orders.php');
+                const response = await fetch('../api/get-orders.php' + (currentFilter !== 'all' ? `?status=${currentFilter}` : ''));
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -826,7 +826,7 @@
         async function updateOrderStatus(orderId, status) {
             try {
                 // 發送更新請求
-                const response = await fetch('/update-order-status.php', {
+                const response = await fetch('../api/update-order-status.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -846,26 +846,21 @@
                 if (data.success) {
                     // 播放提示音效（如果啟用）
                     if (SOUND_SETTINGS.enabled) {
-                        playSound('status-change');
+                        playSound('statusChange');
                     }
 
-                    // 觸發訂單更新事件
-                    window.dispatchEvent(new CustomEvent('orderUpdated', {
-                        detail: { orderId: orderId }
-                    }));
-
-                    // 更新 localStorage
-                    const orders = JSON.parse(localStorage.getItem('orders') || '[]');
-                    const updatedOrders = orders.map(order => {
-                        if (order.id === orderId) {
-                            return { ...order, status: status };
-                        }
-                        return order;
-                    });
-                    localStorage.setItem('orders', JSON.stringify(updatedOrders));
-
                     // 重新載入訂單列表
-            loadOrders();
+                    loadOrders();
+                    
+                    // 顯示成功消息
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: data.message || '狀態已更新',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
                 } else {
                     throw new Error(data.message || '更新失敗');
                 }

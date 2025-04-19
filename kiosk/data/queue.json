@@ -1,0 +1,77 @@
+{
+    "current_number": 3,
+    "queue_prefix": "A",
+    "last_reset_date": "2023-10-22",
+    "queues": [
+        {
+            "id": "ORD20231022001",
+            "queue_number": "A001",
+            "status": "waiting",
+            "created_at": "2023-10-22 09:15:30",
+            "called_times": 0,
+            "last_called_at": null,
+            "estimated_time": 10,
+            "items": [
+                {
+                    "name": "牛肉麵",
+                    "quantity": 1,
+                    "options": ["小辣"]
+                },
+                {
+                    "name": "鹽酥雞",
+                    "quantity": 1,
+                    "options": ["中辣"]
+                }
+            ]
+        },
+        {
+            "id": "ORD20231022002",
+            "queue_number": "A002",
+            "status": "preparing",
+            "created_at": "2023-10-22 09:25:45",
+            "called_times": 0,
+            "last_called_at": null,
+            "estimated_time": 5,
+            "items": [
+                {
+                    "name": "珍珠奶茶",
+                    "quantity": 2,
+                    "options": ["半糖", "少冰"]
+                },
+                {
+                    "name": "提拉米蘇",
+                    "quantity": 1,
+                    "options": []
+                }
+            ]
+        }
+    ],
+    "completed": [
+        {
+            "id": "ORD20231022000",
+            "queue_number": "A000",
+            "status": "completed",
+            "created_at": "2023-10-22 09:00:10",
+            "completed_at": "2023-10-22 09:10:15",
+            "called_times": 1,
+            "last_called_at": "2023-10-22 09:09:30",
+            "items": [
+                {
+                    "name": "珍珠奶茶",
+                    "quantity": 1,
+                    "options": ["全糖", "正常冰"]
+                }
+            ]
+        }
+    ],
+    "display": {
+        "now_serving": ["A000"],
+        "next_up": ["A001", "A002"]
+    },
+    "statistics": {
+        "average_wait_time": 12,
+        "total_completed_today": 1,
+        "total_waiting": 2,
+        "peak_hours": ["12:00-13:00", "18:00-19:00"]
+    }
+}

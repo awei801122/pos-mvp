@@ -1,0 +1,73 @@
+<h2>✅ 一、關聯資料與程式清單（最新版）</h2>
+<table border="1" cellspacing="0" cellpadding="6">
+  <thead>
+    <tr>
+      <th>功能階段</th>
+      <th>涉及的資料表 / 檔案</th>
+      <th>對應程式檔案</th>
+      <th>備註</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>載入菜單</td>
+      <td><code>menu_items</code>（資料表）</td>
+      <td><code><a href="vscode://file/Users/user/pos-mvp/kiosk/api/menu.php">menu.php</a></code>, <code><a href="vscode://file/Users/user/pos-mvp/kiosk/ui/order.js">order.js</a></code></td>
+      <td>前台使用 AJAX 載入分類與菜單</td>
+    </tr>
+    <tr>
+      <td>選擇餐點</td>
+      <td><code>menu_items.id</code></td>
+      <td><code><a href="vscode://file/Users/user/pos-mvp/kiosk/ui/order.js">order.js</a></code></td>
+      <td>商品加入購物車（localStorage 儲存）</td>
+    </tr>
+    <tr>
+      <td>送出訂單</td>
+      <td><code>orders</code>, <code>order_items</code></td>
+      <td><code><a href="vscode://file/Users/user/pos-mvp/kiosk/api/save_order.php">save_order.php</a></code></td>
+      <td>儲存訂單主檔與明細</td>
+    </tr>
+    <tr>
+      <td>建立叫號佇列</td>
+      <td><code>queue</code>（資料表或 JSON）</td>
+      <td><code><a href="vscode://file/Users/user/pos-mvp/kiosk/api/queue.php">queue.php</a></code>, <code><a href="vscode://file/Users/user/pos-mvp/kiosk/api/kitchen.php">kitchen.php</a></code></td>
+      <td>結帳完成或備餐後，寫入佇列資料</td>
+    </tr>
+    <tr>
+      <td>顯示叫號</td>
+      <td><code>queue</code> 表 or <code>queue.json</code></td>
+      <td><code><a href="vscode://file/Users/user/pos-mvp/kiosk/ui/call.html">call.html</a></code>, <code><a href="vscode://file/Users/user/pos-mvp/kiosk/ui/call.js">call.js</a></code></td>
+      <td>前台輪播叫號顯示</td>
+    </tr>
+    <tr>
+      <td>查詢訂單</td>
+      <td><code>orders</code>, <code>order_items</code></td>
+      <td><code><a href="vscode://file/Users/user/pos-mvp/kiosk/api/get-orders.php">get-orders.php</a></code>, <code><a href="vscode://file/Users/user/pos-mvp/kiosk/api/reports.php">reports.php</a></code></td>
+      <td>後台報表與訂單紀錄</td>
+    </tr>
+    <tr>
+      <td>顯示收據</td>
+      <td><code>orders</code>, <code>order_items</code></td>
+      <td><code><a href="vscode://file/Users/user/pos-mvp/kiosk/api/receipt.php">receipt.php</a></code>, <code><a href="vscode://file/Users/user/pos-mvp/kiosk/ui/receipt.html">receipt.html</a></code></td>
+      <td>顯示訂單明細與列印功能</td>
+    </tr>
+    <tr>
+      <td>更新狀態</td>
+      <td><code>orders.status</code> 欄位</td>
+      <td><code><a href="vscode://file/Users/user/pos-mvp/kiosk/api/update-order-status.php">update-order-status.php</a></code></td>
+      <td>用於標記為「備餐中」「完成」等</td>
+    </tr>
+    <tr>
+      <td>除錯紀錄</td>
+      <td><code>logs/order_debug.log</code></td>
+      <td><code><a href="vscode://file/Users/user/pos-mvp/kiosk/api/save_order.php">save_order.php</a></code></td>
+      <td>若有異常，自動紀錄請求內容與錯誤訊息</td>
+    </tr>
+    <tr>
+      <td>菜單來源</td>
+      <td><code>menu_items</code> 資料表</td>
+      <td><code><a href="vscode://file/Users/user/pos-mvp/kiosk/api/menu.php">menu.php</a></code> 產出 JSON 結構</td>
+      <td>前端載入使用分類與清單</td>
+    </tr>
+  </tbody>
+</table>
