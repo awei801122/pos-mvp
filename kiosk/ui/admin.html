@@ -597,7 +597,9 @@
                 // 更新全局訂單列表
                 orders = ordersData.map(order => ({
                     ...order,
-                    status: normalizeOrderStatus(order.status)
+                    status: normalizeOrderStatus(order.status),
+                    callNumber: order.call_number,
+                    items: order.items || []
                 }));
 
                 // 根據訂單狀態分類
@@ -707,8 +709,8 @@
             try {
                 if (!order) return '';
                 
-                // 提取取餐號碼（訂單號碼的最後4位）
-                const pickupNumber = (order.orderNumber || order.id || '').slice(-4);
+                // 提取取餐號碼（使用 order.callNumber，如果無則顯示 '--'）
+                const pickupNumber = order.callNumber || '--';
                 
                 return `
                     <div class="col-12 mb-4">
@@ -733,14 +735,14 @@
                                 </div>
                             </div>
                             <div class="order-items">
-                                ${(order.items || []).map(item => `
+                            ${(order.items || []).map(item => `
                                     <div class="order-item">
                                         <div>
-                                            <span class="fw-medium">${item.name || '未知商品'}</span>
+                                            <span class="fw-medium">${item.item_name || '未知商品'}</span>
                                             <span class="text-muted"> x ${item.quantity || 1}</span>
                                             ${item.note ? `<small class="d-block text-muted">備註：${item.note}</small>` : ''}
                                         </div>
-                                        <span>NT$ ${item.totalPrice || 0}</span>
+                                        <span>NT$ ${item.total_price || 0}</span>
                                     </div>
                                 `).join('')}
                             </div>
@@ -832,7 +834,7 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        orderId: orderId,
+                        order_number: orderId,
                         status: status
                     })
                 });
@@ -849,8 +851,19 @@
                         playSound('statusChange');
                     }
 
+                    // 若更新成功，寫入 queue.json
+                    await fetch('../api/queue.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ order_number: orderId })
+                    });
+
                     // 重新載入訂單列表
                     loadOrders();
+                    
+                    setTimeout(() => {
+                        loadOrders();  // 第二次載入，避免異步延遲
+                    }, 500);
                     
                     // 顯示成功消息
                     Swal.fire({

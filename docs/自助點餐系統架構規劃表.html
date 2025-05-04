@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>自助點餐系統資料架構規劃表</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      padding: 2rem;
+      background: #fff;
+      color: #222;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 0.5rem 0.8rem;
+      text-align: left;
+    }
+    th {
+      background: #d2eaff;
+    }
+    td a {
+      color: #0077cc;
+      text-decoration: none;
+    }
+    td a:hover {
+      text-decoration: underline;
+    }
+    h2 {
+      color: #1e3a8a;
+    }
+  </style>
+</head>
+<body>
+  <h2>📊 自助點餐系統資料架構規劃表</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>功能階段</th>
+        <th>資料表 / 檔案</th>
+        <th>使用方式</th>
+        <th>轉換時機</th>
+        <th>對應程式連結</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>載入菜單</td>
+        <td><code>menu_items</code> 資料表</td>
+        <td>MySQL ➜ JSON 快取</td>
+        <td>點餐頁載入時</td>
+        <td><a href="vscode://file/Users/user/pos-mvp/kiosk/api/menu.php">menu.php</a>, <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/js/order.js">order.js</a></td>
+      </tr>
+      <tr>
+        <td>選擇餐點</td>
+        <td><code>menu_items.id</code></td>
+        <td>localStorage 暫存</td>
+        <td>前端選餐時</td>
+        <td><a href="vscode://file/Users/user/pos-mvp/kiosk/ui/js/order.js">order.js</a></td>
+      </tr>
+      <tr>
+        <td>送出訂單</td>
+        <td><code>orders</code>, <code>order_items</code></td>
+        <td>localStorage ➜ MySQL</td>
+        <td>按下結帳時</td>
+        <td><a href="vscode://file/Users/user/pos-mvp/kiosk/api/save_order.php">save_order.php</a></td>
+      </tr>
+      <tr>
+        <td>建立叫號資料</td>
+        <td><code>queue</code></td>
+        <td>MySQL ➜ JSON (備援)</td>
+        <td>備餐完成後寫入</td>
+        <td><a href="vscode://file/Users/user/pos-mvp/kiosk/api/queue.php">queue.php</a>, <a href="vscode://file/Users/user/pos-mvp/kiosk/api/kitchen.php">kitchen.php</a></td>
+      </tr>
+      <tr>
+        <td>顯示叫號</td>
+        <td><code>queue</code> 或 <code>queue.json</code></td>
+        <td>JSON</td>
+        <td>每秒輪詢顯示畫面</td>
+        <td><a href="vscode://file/Users/user/pos-mvp/kiosk/ui/call.html">call.html</a>, <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/js/call.js">call.js</a></td>
+      </tr>
+      <tr>
+        <td>查詢訂單</td>
+        <td><code>orders</code></td>
+        <td>MySQL</td>
+        <td>後台載入</td>
+        <td><a href="vscode://file/Users/user/pos-mvp/kiosk/api/get-orders.php">get-orders.php</a>, <a href="vscode://file/Users/user/pos-mvp/kiosk/api/reports.php">reports.php</a></td>
+      </tr>
+      <tr>
+        <td>更新訂單狀態</td>
+        <td><code>orders.status</code></td>
+        <td>MySQL</td>
+        <td>製作中 / 完成 / 取消等操作時</td>
+        <td><a href="vscode://file/Users/user/pos-mvp/kiosk/api/update-order-status.php">update-order-status.php</a></td>
+      </tr>
+      <tr>
+        <td>顯示收據</td>
+        <td><code>orders</code>, <code>order_items</code></td>
+        <td>MySQL</td>
+        <td>點選收據查詢</td>
+        <td><a href="vscode://file/Users/user/pos-mvp/kiosk/api/receipt.php">receipt.php</a>, <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/receipt.html">receipt.html</a></td>
+      </tr>
+      <tr>
+        <td>錯誤紀錄</td>
+        <td><code>logs/order_debug.log</code></td>
+        <td>PHP ➜ JSON log</td>
+        <td>發生錯誤時自動記錄</td>
+        <td><a href="vscode://file/Users/user/pos-mvp/kiosk/logs/order_debug.log">order_debug.log</a></td>
+      </tr>
+    </tbody>
+  </table>
+  <h2>📂 專案資料夾結構一覽</h2>
+  <pre style="background:#f7f7f7; padding:1rem; border-radius:6px; overflow-x:auto; line-height:1.5;">
+kiosk/
+├── <a href="vscode://file/Users/user/pos-mvp/kiosk/README.md">README.md</a>                
+├── <a href="vscode://file/Users/user/pos-mvp/kiosk/api">api</a>
+│   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/api/create_tables.sql">create_tables.sql</a>
+│   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/api/db.php">db.php</a>
+│   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/api/get-orders.php">get-orders.php</a>
+│   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/api/index.php">index.php</a>
+│   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/api/init.sql">init.sql</a>
+│   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/api/init_db.php">init_db.php</a>
+│   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/api/inventory.php">inventory.php</a>
+│   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/api/invoice.php">invoice.php</a>
+│   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/api/kitchen.php">kitchen.php</a>
+│   ├── logs-待刪/
+│   │   └── <a href="vscode://file/Users/user/pos-mvp/kiosk/api/logs-待刪/order_debug_2025-04-19.log">order_debug_2025-04-19.log</a>
+│   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/api/menu.php">menu.php</a>
+│   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/api/queue.php">queue.php</a>
+│   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/api/receipt.php">receipt.php</a>
+│   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/api/reports.php">reports.php</a>
+│   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/api/save_order.php">save_order.php</a>
+│   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/api/update-image.php">update-image.php</a>
+│   └── <a href="vscode://file/Users/user/pos-mvp/kiosk/api/update-order-status.php">update-order-status.php</a>
+├── <a href="vscode://file/Users/user/pos-mvp/kiosk/data">data</a>
+│   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/data/config.json">config.json</a>
+│   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/data/inventory.json">inventory.json</a>
+│   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/data/menu.json">menu.json</a>
+│   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/data/orders.json">orders.json</a>
+│   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/data/queue.json">queue.json</a>
+│   └── <a href="vscode://file/Users/user/pos-mvp/kiosk/data/users.json">users.json</a>
+├── <a href="vscode://file/Users/user/pos-mvp/kiosk/logs">logs</a>
+│   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/logs/order_debug.log">order_debug.log</a>
+│   └── <a href="vscode://file/Users/user/pos-mvp/kiosk/logs/order_error.log">order_error.log</a>
+└── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui">ui</a>
+    ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/admin.html">admin.html</a>
+    ├── assets/
+    │   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/assets/config.json">config.json</a>
+    │   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/assets/includes.html">includes.html</a>
+    │   └── js/
+    │       └── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/assets/js/config.js">config.js</a>
+    ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/call.html">call.html</a>
+    ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/config-ui.html">config-ui.html</a>
+    ├── css/
+    │   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/css/admin.css">admin.css</a>
+    │   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/css/login.css">login.css</a>
+    │   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/css/main.css">main.css</a>
+    │   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/css/menu-edit.css">menu-edit.css</a>
+    │   └── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/css/order.css">order.css</a>
+    ├── img/
+    │   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/img/food-1.jpg">food-1.jpg</a>
+    │   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/img/food-2.jpg">food-2.jpg</a>
+    │   └── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/img/food-3.jpg">food-3.jpg</a>
+    ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/index.html">index.html</a>
+    ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/inventory.html">inventory.html</a>
+    ├── js/
+    │   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/js/admin.js">admin.js</a>
+    │   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/js/call.js">call.js</a>
+    │   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/js/inventory.js">inventory.js</a>
+    │   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/js/login.js">login.js</a>
+    │   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/js/menu-edit.js">menu-edit.js</a>
+    │   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/js/menu.js">menu.js</a>
+    │   ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/js/order.js">order.js</a>
+    │   └── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/js/report.js">report.js</a>
+    ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/login.html">login.html</a>
+    ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/menu-edit.html">menu-edit.html</a>
+    ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/order.html">order.html</a>
+    ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/payment.html">payment.html</a>
+    ├── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/receipt.html">receipt.html</a>
+    └── <a href="vscode://file/Users/user/pos-mvp/kiosk/ui/sales-report.html">sales-report.html</a>
+  </pre>
+<!-- 📘 系統架構說明連結入口（可嵌入首頁與側邊欄） -->
+<section class="mt-5">
+  <h2>📘 系統開發說明快速入口</h2>
+  <p>此頁面可透過首頁與側邊欄連結開啟，做為開發者的總覽與快速索引。</p>
+  <ul>
+    <li>📌 建議加在 <code>index.html</code> 中的 <code>&lt;section&gt;</code> 區塊，方便訪客開啟此頁</li>
+    <li>📌 側邊欄可在 <code>includes.html</code> 中加入如下選單項目：</li>
+  </ul>
+  <pre><code>
+&lt;li&gt;
+  &lt;a href="../docs/自助點餐系統架構規劃表.html" target="_blank"&gt;
+    &lt;i class="bi bi-diagram-3 me-1"&gt;&lt;/i&gt; 系統架構說明
+  &lt;/a&gt;
+&lt;/li&gt;
+  </code></pre>
+  <p>📎 本頁建議放置於 <code>docs/</code> 或 <code>ui/help/</code>，並隨專案版本更新。</p>
+</section>
+</body>
+</html>

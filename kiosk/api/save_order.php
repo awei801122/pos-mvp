@@ -43,19 +43,27 @@ $payment_method = $data['payment_method'];
 $created_at = date('Y-m-d H:i:s', strtotime($data['created_at']));
 $updated_at = date('Y-m-d H:i:s', strtotime($data['updated_at']));
 
+// 自動產生當日叫號號碼（從 1 開始）
+$today = date('Y-m-d');
+$stmt = $pdo->prepare("SELECT MAX(call_number) AS max_no FROM orders WHERE DATE(order_time) = ?");
+$stmt->execute([$today]);
+$row = $stmt->fetch();
+$last_call = $row['max_no'] ?? 0;
+$call_number = $last_call + 1;
+
 try {
     $pdo->beginTransaction();
 
     // 插入 orders 表
-    $stmt = $pdo->prepare("INSERT INTO orders (order_number, order_time, total_amount, status, payment_method, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$order_number, $order_time, $total_amount, $status, $payment_method, $created_at, $updated_at]);
+    $stmt = $pdo->prepare("INSERT INTO orders (order_number, order_time, total_amount, status, payment_method, created_at, updated_at, call_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$order_number, $order_time, $total_amount, $status, $payment_method, $created_at, $updated_at, $call_number]);
 
     $order_id = $pdo->lastInsertId();
 
     // 預設填入 note 欄位（避免沒有傳遞 note 時出錯）
-    foreach ($items as $index => &$item) {
-        if (!isset($item['note'])) {
-            $item['note'] = '';
+    foreach ($items as $index => $item) {
+        if (!isset($items[$index]['note'])) {
+            $items[$index]['note'] = '';
         }
     }
 
@@ -102,7 +110,8 @@ try {
             'orderNumber' => $order_number,
             'items' => $items,
             'total' => $total_amount,
-            'paymentMethod' => $payment_method
+            'paymentMethod' => $payment_method,
+            'callNumber' => $call_number
         ]
     ]);
 } catch (Exception $e) {

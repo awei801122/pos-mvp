@@ -49,10 +49,10 @@
           if (data.length === 0) {
             queueList.innerHTML = '<div class="number-box">尚無叫號</div>';
           } else {
-            data.forEach((num) => {
+            data.forEach((item) => {
               const box = document.createElement("div");
               box.className = "number-box";
-              box.textContent = num;
+              box.textContent = item.call_number ?? item; // 若為舊格式則顯示原值
               queueList.appendChild(box);
             });
           }
