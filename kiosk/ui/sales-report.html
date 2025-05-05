@@ -65,6 +65,7 @@
             font-weight: 500;
             position: relative;
             z-index: 2;
+            text-align: center;
         }
 
         .stat-card .icon {
@@ -282,23 +283,10 @@
         </div>
 
         <!-- 日期選擇和匯出按鈕 -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div class="d-flex gap-3">
-                <input type="date" class="form-control date-input" id="reportDate">
-                <button class="btn btn-primary btn-export" onclick="loadReport()">
-                    <i class="bi bi-search me-2"></i>查詢
-                </button>
-                <button class="btn btn-warning btn-export" onclick="loadArchivedOrders()">
-                    <i class="bi bi-clock-history me-2"></i>歸檔當前訂單
-                </button>
-            </div>
-            <div class="d-flex gap-2">
-                <button class="btn btn-outline-primary btn-export" onclick="exportCSV()">
-                    <i class="bi bi-file-earmark-spreadsheet me-2"></i>匯出 CSV
-                </button>
-                <button class="btn btn-outline-primary btn-export" onclick="exportJSON()">
-                    <i class="bi bi-file-earmark-code me-2"></i>匯出 JSON
-                </button>
+        <div class="d-flex flex-wrap justify-content-end gap-3 mb-4">
+            <div class="d-flex flex-wrap gap-2">
+                <input type="text" class="form-control date-input" id="reportDate" placeholder="選擇日期" style="width: 150px;" onfocus="(this.type='date')" onblur="(this.type='text')">
+                <button class="btn btn-outline-primary btn-export" onclick="exportCSV()">匯出 CSV</button>
             </div>
         </div>
 
@@ -417,20 +405,14 @@
 
                         console.log('取得訂單資料：', data);
 
-                        // 新增這行以正確儲存 orders 至 localStorage
-                        localStorage.setItem('orders', JSON.stringify(data));
+                        const orders = data.data; // ✅ 正確取出訂單陣列
 
-                        // 更新統計資料
-                        updateStatistics(data);
+                        localStorage.setItem('orders', JSON.stringify(orders));
 
-                        // 更新商品銷售統計
-                        updateItemSales(data);
-
-                        // 更新支付方式統計
-                        updatePaymentMethods(data);
-
-                        // 更新訂單明細
-                        updateOrderDetails(data);
+                        updateStatistics(orders);
+                        updateItemSales(orders);
+                        updatePaymentMethods(orders);
+                        updateOrderDetails(orders);
                     })
                     .catch(error => {
                         console.error('載入報表時發生錯誤：', error);
@@ -451,17 +433,19 @@
          */
         function updateStatistics(orders) {
             try {
+                // 只統計已完成的訂單
+                const completedOrders = orders.filter(order => order.status === 'COMPLETED' && order.status !== 'CANCELLED');
                 // 計算總營業額
-                const totalRevenue = orders.reduce((sum, order) => sum + (parseFloat(order.total_amount) || 0), 0);
+                const totalRevenue = completedOrders.reduce((sum, order) => sum + (parseFloat(order.total_amount) || 0), 0);
                 
                 // 計算訂單數量
-                const orderCount = orders.length;
+                const orderCount = completedOrders.length;
                 
                 // 計算平均訂單金額
                 const averageOrderPrice = orderCount > 0 ? totalRevenue / orderCount : 0;
                 
                 // 計算商品總數量
-                const totalItems = orders.reduce((sum, order) => {
+                const totalItems = completedOrders.reduce((sum, order) => {
                     return sum + order.items.reduce((itemSum, item) => itemSum + (parseInt(item.quantity) || 0), 0);
                 }, 0);
 
@@ -488,20 +472,20 @@
          */
         function updateItemSales(orders) {
             try {
+                // 只處理已完成的訂單
+                const completedOrders = orders.filter(order => order.status === 'COMPLETED' && order.status !== 'CANCELLED');
                 // 統計每個商品的銷售數量和金額 (以商品名稱為 key)
                 const itemStats = {};
-                orders.forEach(order => {
+                completedOrders.forEach(order => {
                     if (!order.items || !Array.isArray(order.items)) return;
                     order.items.forEach(item => {
                         const itemName = item.item_name || '未命名商品';
                         // ==== 正確取得 itemCategory ====
                         let itemCategory = '未分類';
-                        if ('category' in item) {
-                            if (typeof item.category === 'string' && item.category.trim() !== '') {
-                                itemCategory = item.category.trim();
-                            } else if (item.category === null || item.category === undefined) {
-                                itemCategory = '未分類';
-                            }
+                        if (typeof item.category === 'string' && item.category.trim() !== '') {
+                            itemCategory = item.category.trim();
+                        } else {
+                            itemCategory = '未分類';
                         }
                         // ==== END ====
                         const key = itemName;
@@ -519,7 +503,7 @@
                 });
 
                 // 計算總營業額（用於計算佔比）
-                const totalRevenue = orders.reduce((sum, order) => sum + (parseFloat(order.total_amount) || 0), 0);
+                const totalRevenue = completedOrders.reduce((sum, order) => sum + (parseFloat(order.total_amount) || 0), 0);
 
                 // 轉換為陣列
                 const itemStatsArray = Object.entries(itemStats)
@@ -551,8 +535,9 @@
                     return;
                 }
                 let currentCategory = '';
-                tbody.innerHTML = itemStatsArray.map(item => {
+                tbody.innerHTML = itemStatsArray.map((item, idx, arr) => {
                     let groupHeader = '';
+                    let dividerRow = '';
                     if (item.category !== currentCategory) {
                         currentCategory = item.category;
                         groupHeader = `
@@ -560,8 +545,10 @@
                                 <td colspan="6"><strong>${currentCategory}</strong></td>
                             </tr>
                         `;
+                        // 在分類列下方加入分隔線
+                        dividerRow = `<tr><td colspan="6" style="padding: 0;"></td></tr>`;
                     }
-                    return groupHeader + `
+                    let itemRow = `
                         <tr>
                             <td>${item.name}</td>
                             <td>${item.category}</td>
@@ -588,6 +575,8 @@
                             </td>
                         </tr>
                     `;
+                    // 若有 groupHeader，則 groupHeader + dividerRow + itemRow，否則只 itemRow
+                    return (groupHeader ? groupHeader + dividerRow : '') + itemRow;
                 }).join('');
                 // ==== END ====
 
@@ -602,13 +591,15 @@
          * @param {Array} orders - 訂單資料
          */
         function updatePaymentMethods(orders) {
+            // 只統計已完成的訂單
+            const completedOrders = orders.filter(order => order.status === 'COMPLETED' && order.status !== 'CANCELLED');
             // 統計各支付方式的訂單數量和金額
             const paymentStats = {
                 cash: { count: 0, amount: 0 },
                 mobile: { count: 0, amount: 0 }
             };
 
-            orders.forEach(order => {
+            completedOrders.forEach(order => {
                 // payment_method 為 'CASH' 或 'MOBILE'
                 const method = order.payment_method === 'CASH' ? 'cash' : 'mobile';
                 paymentStats[method].count++;
@@ -616,8 +607,8 @@
             });
 
             // 計算總數用於百分比
-            const totalOrders = orders.length;
-            const totalAmount = orders.reduce((sum, order) => sum + (parseFloat(order.total_amount) || 0), 0);
+            const totalOrders = completedOrders.length;
+            const totalAmount = completedOrders.reduce((sum, order) => sum + (parseFloat(order.total_amount) || 0), 0);
 
             // 更新表格
             const tbody = document.querySelector('#paymentMethodTable tbody');
@@ -626,7 +617,7 @@
                 return;
             }
 
-            tbody.innerHTML = orders.length > 0 ? `
+            tbody.innerHTML = completedOrders.length > 0 ? `
                 <tr>
                     <td>現金支付</td>
                     <td>${paymentStats.cash.count}</td>
@@ -712,31 +703,7 @@
         function exportCSV() {
             try {
                 const selectedDate = document.getElementById('reportDate').value;
-                const orders = JSON.parse(localStorage.getItem('orders') || '[]');
-                const archivedOrders = JSON.parse(localStorage.getItem('archivedOrders') || '[]');
-                
-                // 合併並篩選訂單
-                const allOrders = [...orders, ...archivedOrders].filter(order => {
-                    return order.status === 'COMPLETED' && 
-                           order.created_at && order.created_at.startsWith(selectedDate);
-                });
-
-                // 準備 CSV 內容
-                let csvContent = '訂單編號,訂購時間,商品名稱,數量,單價,總價,支付方式\n';
-                
-                allOrders.forEach(order => {
-                    order.items.forEach(item => {
-                        csvContent += `${order.id},${order.created_at},${item.name},${item.quantity},${item.price},${item.totalPrice},${order.payment_method === 'CASH' ? '現金' : '行動支付'}\n`;
-                    });
-                });
-
-                // 建立下載連結
-                const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(blob);
-                link.download = `sales-report-${selectedDate}.csv`;
-                link.click();
-
+                window.open(`../../api/get-sales.php?date=${selectedDate}&export=1`, '_blank');
             } catch (error) {
                 console.error('匯出 CSV 時發生錯誤：', error);
                 Swal.fire({
