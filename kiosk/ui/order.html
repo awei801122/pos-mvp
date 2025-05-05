@@ -321,39 +321,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="border rounded p-3 mb-4">
-                        <h6 class="mb-3">訂單明細：</h6>
-                        ${cart.items.map(item => `
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <div>
-                                    <span class="fw-medium">${item.name}</span>
-                                    <span class="text-muted"> x ${item.quantity}</span>
-                                    ${item.note ? `<small class="d-block text-muted">備註：${item.note}</small>` : ''}
-                                </div>
-                                <span>NT$ ${item.totalPrice}</span>
-                            </div>
-                        `).join('')}
-                        <hr>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <strong>總計：</strong>
-                            <strong>NT$ ${cart.getTotal()}</strong>
-                        </div>
-                    </div>
-                    
-                    <div class="d-grid gap-3">
-                        <button class="btn btn-lg btn-outline-primary payment-option" 
-                                onclick="processPayment('cash')">
-                            <i class="bi bi-cash me-2"></i>
-                            現金支付
-                            <small class="d-block text-muted">測試階段：點擊即視為已支付</small>
-                        </button>
-                        <button class="btn btn-lg btn-outline-primary payment-option" 
-                                onclick="processPayment('mobile')">
-                            <i class="bi bi-phone me-2"></i>
-                            行動支付
-                            <small class="d-block text-muted">LINE Pay / 街口支付</small>
-                        </button>
-                    </div>
+                    <!-- 付款內容將由 JavaScript 動態生成 -->
                 </div>
             </div>
         </div>
@@ -388,7 +356,8 @@
                             <div class="text-center mb-4">
                                 <i class="bi bi-check-circle text-success" style="font-size: 4rem;"></i>
                             </div>
-                            <h4 class="text-center mb-4">訂單編號：${orderData.orderNumber}</h4>
+                            <h4 class="text-center mb-2">訂單編號：${orderData.orderNumber}</h4>
+                            <p class="text-center text-muted mb-4">${new Date().toLocaleString()}</p>
                             <div class="alert alert-info">
                                 <p class="mb-0">請記住您的訂單編號，並至櫃檯結帳取餐。</p>
                             </div>
@@ -944,8 +913,10 @@
                     return;
                 }
 
-                // 生成訂單編號 (年月日時分秒毫秒)
-                const orderNumber = new Date().toISOString().replace(/[-:T.Z]/g, '');
+                // 生成訂單編號 (年月日時分秒毫秒) - 使用台灣時間 (GMT+8)
+                const now = new Date();
+                const taiwanTime = new Date(now.getTime() + (8 * 60 * 60 * 1000)); // 手動轉 GMT+8
+                const orderNumber = taiwanTime.toISOString().slice(0,19).replace(/[-:T]/g, '');
 
                 // 保存訂單
                 fetch('/api/save_order.php', {
@@ -984,8 +955,19 @@
                         // 清空購物車
                         cart.clear();
                         
-                        // 儲存到 localStorage
-                        const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+                        // 儲存到 localStorage，確保 orders 一定是陣列
+                        let orders = [];
+                        try {
+                            const stored = localStorage.getItem('orders');
+                            if (stored) {
+                                const parsed = JSON.parse(stored);
+                                if (Array.isArray(parsed)) {
+                                    orders = parsed;
+                                }
+                            }
+                        } catch (e) {
+                            console.warn('訂單載入失敗，將初始化 orders 為空陣列');
+                        }
                         orders.push(result.order);
                         localStorage.setItem('orders', JSON.stringify(orders));
                         
@@ -1302,11 +1284,29 @@
             });
         }
 
-        // 查看所有訂單（測試用）
+        // 查看所有訂單
         function viewAllOrders() {
             const orders = JSON.parse(localStorage.getItem('orders') || '[]');
-            console.log('所有訂單：', orders);
-            return orders;
+
+            const modalContent = orders.length === 0 ? `
+                <p class="text-muted">目前沒有訂單資料。</p>
+            ` : `
+                <ul class="list-group small">
+                    ${orders.map(order => `
+                        <li class="list-group-item">
+                            <strong>#${order.callNumber || 'N/A'}</strong> - ${order.items.map(i => i.name).join(', ')} - NT$${order.total_amount}
+                            <br><small>${order.orderNumber}</small>
+                        </li>
+                    `).join('')}
+                </ul>
+            `;
+
+            Swal.fire({
+                title: '所有訂單',
+                html: modalContent,
+                width: '30rem',
+                confirmButtonText: '關閉'
+            });
         }
 
         // 添加導航處理函數

@@ -86,8 +86,17 @@ try {
         }
     }
 
+    // 取得每個商品的分類 category
+    $stmt_category = $pdo->prepare("SELECT category FROM menu WHERE id = ?");
+    foreach ($items as &$item) {
+        $stmt_category->execute([$item['menu_id']]);
+        $menuRow = $stmt_category->fetch(PDO::FETCH_ASSOC);
+        $item['category'] = $menuRow['category'] ?? '未分類';
+    }
+    unset($item); // 解除引用
+
     // 插入 order_items 表
-    $stmt_item = $pdo->prepare("INSERT INTO order_items (order_id, menu_id, item_name, price, quantity, note, total_price) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $stmt_item = $pdo->prepare("INSERT INTO order_items (order_id, menu_id, item_name, price, quantity, note, total_price, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
     foreach ($items as $item) {
         $stmt_item->execute([
             $order_id,
@@ -96,7 +105,8 @@ try {
             $item['price'],
             $item['quantity'],
             $item['note'] ?? '',
-            $item['subtotal']
+            $item['subtotal'],
+            $item['category']
         ]);
     }
 

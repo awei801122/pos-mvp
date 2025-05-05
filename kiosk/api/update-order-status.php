@@ -11,15 +11,6 @@ try {
     $rawStatus = $data['status'] ?? null;
     $status = isset($rawStatus) ? strtoupper($rawStatus) : null;
 
-    // 狀態轉換
-    $statusMap = [
-        'PREPARING' => 'PROCESSING',
-        'COOKING' => 'PROCESSING',
-        'READY' => 'COMPLETED'
-    ];
-    if (isset($statusMap[$status])) {
-        $status = $statusMap[$status];
-    }
 
     // Log 請求
     $logMessage = sprintf(
@@ -37,6 +28,7 @@ try {
         'order_number' => $orderNumber,
         'status' => $status
     ]);
+    file_put_contents(__DIR__ . '/../logs/order_status_debug.log', "[" . date("Y-m-d H:i:s") . "] ⚙️ 更新結果：rowCount=" . $stmt->rowCount() . "\n", FILE_APPEND);
 
     if (!$success) {
         file_put_contents(__DIR__ . '/../logs/order_status_debug.log', "[" . date("Y-m-d H:i:s") . "] ❗ echo 資料庫執行失敗\n", FILE_APPEND);

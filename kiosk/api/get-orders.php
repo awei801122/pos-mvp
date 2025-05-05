@@ -72,6 +72,13 @@ try {
         $order['items'] = $items;
     }
     
+    if ($status === 'READY') {
+        $callNumbersOnly = array_map(function($order) {
+            return ['call_number' => $order['callNumber']];
+        }, $orders);
+        echo json_encode($callNumbersOnly, JSON_UNESCAPED_UNICODE);
+        exit();
+    }
     echo json_encode($orders);
 
 } catch (Exception $e) {

@@ -671,6 +671,12 @@
                 if (currentFilter && currentFilter !== 'all') {
                     const filterStatus = currentFilter.toUpperCase();
                     filteredOrders = orders.filter(order => order && order.status === filterStatus);
+                } else {
+                    // 「全部訂單」排除已完成與取消
+                    filteredOrders = orders.filter(order => 
+                        order.status !== ORDER_STATUS.COMPLETED &&
+                        order.status !== ORDER_STATUS.CANCELLED
+                    );
                 }
 
                 // 如果沒有訂單

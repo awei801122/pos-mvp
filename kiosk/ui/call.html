@@ -38,29 +38,36 @@
   <div class="numbers" id="queueList">
     <div class="number-box">尚無叫號</div>
   </div>
+<script>
+  async function updateQueue() {
+    try {
+      const res = await fetch("/api/get-orders.php?status=READY&_=" + new Date().getTime());
+      const data = await res.json();
 
-  <script>
-    function updateQueue() {
-      fetch("queue.json?_=" + new Date().getTime()) // 避免快取
-        .then((res) => res.json())
-        .then((data) => {
-          const queueList = document.getElementById("queueList");
-          queueList.innerHTML = "";
-          if (data.length === 0) {
-            queueList.innerHTML = '<div class="number-box">尚無叫號</div>';
-          } else {
-            data.forEach((item) => {
-              const box = document.createElement("div");
-              box.className = "number-box";
-              box.textContent = item.call_number ?? item; // 若為舊格式則顯示原值
-              queueList.appendChild(box);
-            });
-          }
+      const queueList = document.getElementById("queueList");
+      queueList.innerHTML = "";
+
+      const callNumbers = data
+        .filter(order => order.call_number)
+        .map(order => order.call_number);
+
+      if (callNumbers.length === 0) {
+        queueList.innerHTML = '<div class="number-box">尚無叫號</div>';
+      } else {
+        callNumbers.forEach(number => {
+          const box = document.createElement("div");
+          box.className = "number-box";
+          box.textContent = number;
+          queueList.appendChild(box);
         });
+      }
+    } catch (error) {
+      console.error("載入叫號資料失敗", error);
     }
+  }
 
-    setInterval(updateQueue, 3000);
-    updateQueue();
-  </script>
+  setInterval(updateQueue, 3000);
+  updateQueue();
+</script>
 </body>
 </html>

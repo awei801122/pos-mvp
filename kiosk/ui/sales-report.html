@@ -388,7 +388,14 @@
             // 設置日期選擇器為今天
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('reportDate').value = today;
-            
+
+            // 初始化 menuItems
+            fetch('../../api/menu.php')
+                .then(response => response.json())
+                .then(data => {
+                    localStorage.setItem('menuItems', JSON.stringify(data));
+                });
+
             // 載入報表資料
             loadReport();
 
@@ -402,45 +409,39 @@
         function loadReport() {
             try {
                 const selectedDate = document.getElementById('reportDate').value;
-                const startDate = new Date(selectedDate);
-                startDate.setHours(0, 0, 0, 0);
-                const endDate = new Date(selectedDate);
-                endDate.setHours(23, 59, 59, 999);
 
-                // 從 localStorage 獲取訂單資料
-                const orders = JSON.parse(localStorage.getItem('orders') || '[]');
-                const archivedOrders = JSON.parse(localStorage.getItem('archivedOrders') || '[]');
+                fetch(`../../api/get-sales.php?date=${selectedDate}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) throw new Error(data.error);
 
-                // 合併當前訂單和歸檔訂單
-                const allOrders = [...orders, ...archivedOrders];
+                        console.log('取得訂單資料：', data);
 
-                // 篩選指定日期內的訂單
-                const dateOrders = allOrders.filter(order => {
-                    const orderDate = new Date(order.orderTime || order.createdAt);
-                    return orderDate >= startDate && orderDate <= endDate;
-                });
+                        // 新增這行以正確儲存 orders 至 localStorage
+                        localStorage.setItem('orders', JSON.stringify(data));
 
-                console.log('當日訂單：', dateOrders); // 修改調試日誌
+                        // 更新統計資料
+                        updateStatistics(data);
 
-                // 更新統計資料
-                updateStatistics(dateOrders);
+                        // 更新商品銷售統計
+                        updateItemSales(data);
 
-                // 更新商品銷售統計
-                updateItemSales(dateOrders);
+                        // 更新支付方式統計
+                        updatePaymentMethods(data);
 
-                // 更新支付方式統計
-                updatePaymentMethods(dateOrders);
-
-                // 更新訂單明細
-                updateOrderDetails(dateOrders);
-
+                        // 更新訂單明細
+                        updateOrderDetails(data);
+                    })
+                    .catch(error => {
+                        console.error('載入報表時發生錯誤：', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: '載入失敗',
+                            text: '無法從伺服器取得資料'
+                        });
+                    });
             } catch (error) {
-                console.error('載入報表時發生錯誤：', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: '載入失敗',
-                    text: '載入報表資料時發生錯誤'
-                });
+                console.error('載入報表時發生例外：', error);
             }
         }
 
@@ -451,7 +452,7 @@
         function updateStatistics(orders) {
             try {
                 // 計算總營業額
-                const totalRevenue = orders.reduce((sum, order) => sum + (parseFloat(order.total) || 0), 0);
+                const totalRevenue = orders.reduce((sum, order) => sum + (parseFloat(order.total_amount) || 0), 0);
                 
                 // 計算訂單數量
                 const orderCount = orders.length;
@@ -487,49 +488,80 @@
          */
         function updateItemSales(orders) {
             try {
-                // 從 localStorage 獲取商品資料
-                const menuItems = JSON.parse(localStorage.getItem('menuItems') || '[]');
-                const menuItemsMap = new Map(menuItems.map(item => [item.name, item]));
-
-                // 統計每個商品的銷售數量和金額
+                // 統計每個商品的銷售數量和金額 (以商品名稱為 key)
                 const itemStats = {};
                 orders.forEach(order => {
+                    if (!order.items || !Array.isArray(order.items)) return;
                     order.items.forEach(item => {
-                        if (!itemStats[item.name]) {
-                            // 從商品資料中獲取分類
-                            const menuItem = menuItemsMap.get(item.name);
-                            itemStats[item.name] = {
+                        const itemName = item.item_name || '未命名商品';
+                        // ==== 正確取得 itemCategory ====
+                        let itemCategory = '未分類';
+                        if ('category' in item) {
+                            if (typeof item.category === 'string' && item.category.trim() !== '') {
+                                itemCategory = item.category.trim();
+                            } else if (item.category === null || item.category === undefined) {
+                                itemCategory = '未分類';
+                            }
+                        }
+                        // ==== END ====
+                        const key = itemName;
+                        if (!itemStats[key]) {
+                            itemStats[key] = {
+                                name: itemName,
+                                category: itemCategory,
                                 quantity: 0,
-                                revenue: 0,
-                                category: menuItem ? menuItem.category : '未分類'
+                                revenue: 0
                             };
                         }
-                        itemStats[item.name].quantity += parseInt(item.quantity) || 0;
-                        itemStats[item.name].revenue += parseFloat(item.totalPrice) || 0;
+                        itemStats[key].quantity += parseInt(item.quantity) || 0;
+                        itemStats[key].revenue += parseFloat(item.total_price || item.totalPrice || 0);
                     });
                 });
 
                 // 計算總營業額（用於計算佔比）
-                const totalRevenue = orders.reduce((sum, order) => sum + (parseFloat(order.total) || 0), 0);
+                const totalRevenue = orders.reduce((sum, order) => sum + (parseFloat(order.total_amount) || 0), 0);
 
-                // 轉換為陣列並排序
+                // 轉換為陣列
                 const itemStatsArray = Object.entries(itemStats)
-                    .map(([name, stats]) => ({
-                        name,
-                        ...stats,
+                    .map(([key, stats]) => ({
+                        name: stats.name,
+                        category: stats.category,
+                        quantity: stats.quantity,
+                        revenue: stats.revenue,
                         percentage: totalRevenue > 0 ? (stats.revenue / totalRevenue * 100) : 0
-                    }))
-                    .sort((a, b) => b.revenue - a.revenue);
+                    }));
 
-                // 更新表格
+                // ==== 分類與金額排序並分類分隔 ====
+                // 根據分類與金額排序
+                itemStatsArray.sort((a, b) => {
+                    if (a.category === b.category) {
+                        return b.revenue - a.revenue; // 同類別依收入排序
+                    }
+                    return a.category.localeCompare(b.category); // 類別名稱排序
+                });
+
+                // 產生表格 HTML 並依分類分組
                 const tbody = document.querySelector('#itemSalesTable tbody');
                 if (!tbody) {
                     console.error('找不到商品銷售統計表格');
                     return;
                 }
-
-                tbody.innerHTML = itemStatsArray.length > 0 ? 
-                    itemStatsArray.map(item => `
+                if (itemStatsArray.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center">無銷售資料</td></tr>';
+                    return;
+                }
+                let currentCategory = '';
+                tbody.innerHTML = itemStatsArray.map(item => {
+                    let groupHeader = '';
+                    if (item.category !== currentCategory) {
+                        currentCategory = item.category;
+                        groupHeader = `
+                            <tr class="table-secondary">
+                                <td colspan="6"><strong>${currentCategory}</strong></td>
+                            </tr>
+                        `;
+                    }
+                    return groupHeader + `
                         <tr>
                             <td>${item.name}</td>
                             <td>${item.category}</td>
@@ -555,8 +587,9 @@
                                 </div>
                             </td>
                         </tr>
-                    `).join('') : 
-                    '<tr><td colspan="6" class="text-center">無銷售資料</td></tr>';
+                    `;
+                }).join('');
+                // ==== END ====
 
             } catch (error) {
                 console.error('更新商品銷售統計時發生錯誤：', error);
@@ -576,14 +609,15 @@
             };
 
             orders.forEach(order => {
-                const method = order.paymentMethod === 'cash' ? 'cash' : 'mobile';
+                // payment_method 為 'CASH' 或 'MOBILE'
+                const method = order.payment_method === 'CASH' ? 'cash' : 'mobile';
                 paymentStats[method].count++;
-                paymentStats[method].amount += parseFloat(order.total) || 0;
+                paymentStats[method].amount += parseFloat(order.total_amount) || 0;
             });
 
             // 計算總數用於百分比
             const totalOrders = orders.length;
-            const totalAmount = orders.reduce((sum, order) => sum + (parseFloat(order.total) || 0), 0);
+            const totalAmount = orders.reduce((sum, order) => sum + (parseFloat(order.total_amount) || 0), 0);
 
             // 更新表格
             const tbody = document.querySelector('#paymentMethodTable tbody');
@@ -645,30 +679,30 @@
                 'CANCELLED': '已取消'
             };
 
-            tbody.innerHTML = orders.length > 0 ? 
+            tbody.innerHTML = orders.length > 0 ?
                 orders.map(order => `
                     <tr>
-                        <td>${order.id}</td>
-                        <td>${new Date(order.orderTime || order.createdAt).toLocaleString()}</td>
+                        <td>${order.order_number || order.id}</td>
+                        <td>${order.created_at ? new Date(order.created_at).toLocaleString() : ''}</td>
                         <td>
                             ${order.items.map(item => `
-                                ${item.name} x ${item.quantity}
+                                ${item.item_name ? item.item_name : '未命名商品'} x ${item.quantity || 0}
                                 ${item.note ? `<br><small class="text-muted">備註：${item.note}</small>` : ''}
                             `).join('<br>')}
                         </td>
                         <td>
-                            <span class="badge ${order.paymentMethod === 'cash' ? 'bg-secondary' : 'bg-info'}">
-                                ${order.paymentMethod === 'cash' ? '現金' : '行動支付'}
+                            <span class="badge ${order.payment_method === 'CASH' ? 'bg-secondary' : 'bg-info'}">
+                                ${order.payment_method === 'CASH' ? '現金' : '行動支付'}
                             </span>
                         </td>
-                        <td>NT$ ${order.total}</td>
+                        <td>NT$ ${order.total_amount}</td>
                         <td>
                             <span class="badge ${statusStyles[order.status] || 'bg-secondary'}">
                                 ${statusText[order.status] || '未知狀態'}
                             </span>
                         </td>
                     </tr>
-                `).join('') : 
+                `).join('') :
                 '<tr><td colspan="6" class="text-center">無訂單資料</td></tr>';
         }
 
@@ -684,7 +718,7 @@
                 // 合併並篩選訂單
                 const allOrders = [...orders, ...archivedOrders].filter(order => {
                     return order.status === 'COMPLETED' && 
-                           order.orderTime.startsWith(selectedDate);
+                           order.created_at && order.created_at.startsWith(selectedDate);
                 });
 
                 // 準備 CSV 內容
@@ -692,7 +726,7 @@
                 
                 allOrders.forEach(order => {
                     order.items.forEach(item => {
-                        csvContent += `${order.id},${order.orderTime},${item.name},${item.quantity},${item.price},${item.totalPrice},${order.paymentMethod === 'cash' ? '現金' : '行動支付'}\n`;
+                        csvContent += `${order.id},${order.created_at},${item.name},${item.quantity},${item.price},${item.totalPrice},${order.payment_method === 'CASH' ? '現金' : '行動支付'}\n`;
                     });
                 });
 
@@ -725,7 +759,7 @@
                 // 合併並篩選訂單
                 const allOrders = [...orders, ...archivedOrders].filter(order => {
                     return order.status === 'COMPLETED' && 
-                           order.orderTime.startsWith(selectedDate);
+                           order.created_at && order.created_at.startsWith(selectedDate);
                 });
 
                 // 建立下載連結
