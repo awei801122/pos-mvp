@@ -1,15 +1,22 @@
 {
-  "name": "pos-mvp",
+  "name": "pos-kiosk",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "electron ."
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
-  "dependencies": {
-    "electron": "^35.1.5"
+  "build": {
+    "appId": "com.yourcompany.poskiosk",
+    "productName": "POS 點餐機",
+    "files": [
+      "**/*"
+    ],
+    "directories": {
+      "output": "dist"
+    }
+  },
+  "devDependencies": {
+    "electron": "^29.0.0",
+    "electron-packager": "^17.1.2"
   }
 }
